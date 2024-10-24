@@ -19,17 +19,17 @@ class PostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Post
-        fields = ['id', 'text', 'pub_date', 'author', 'group']
+        fields = ('id', 'text', 'pub_date', 'author', 'group')
 
 
 class CommentSerializer(serializers.ModelSerializer):
     author = serializers.SlugRelatedField(
         read_only=True, slug_field='username')
-    post = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = Comment
-        fields = ['id', 'author', 'post', 'text', 'created']
+        fields = ('id', 'author', 'post', 'text', 'created')
+        read_only_fields = ('author', 'post')
 
 
 class FollowSerializer(serializers.ModelSerializer):
@@ -39,9 +39,13 @@ class FollowSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Follow
-        fields = ['user', 'following']
+        fields = ('user', 'following')
 
     def validate_following(self, value):
-        if self.context['request'].user == value:
+        user = self.context['request'].user
+        if user == value:
             raise serializers.ValidationError("You cannot follow yourself")
+        if Follow.objects.filter(user=user, following=value).exists():
+            raise serializers.ValidationError(
+                "You are already following this user")
         return value

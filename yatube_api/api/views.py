@@ -1,6 +1,8 @@
 from django.contrib.auth import get_user_model
-from rest_framework import serializers, viewsets
+from rest_framework import viewsets
+from rest_framework.exceptions import NotFound
 from rest_framework.permissions import (
+    AllowAny,
     IsAuthenticated,
     IsAuthenticatedOrReadOnly)
 from rest_framework.pagination import LimitOffsetPagination
@@ -25,7 +27,7 @@ class PostPagination(LimitOffsetPagination):
 class GroupViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
-    permission_classes = (IsAuthenticatedOrReadOnly,)
+    permission_classes = (AllowAny,)
     pagination_class = None
 
 
@@ -33,11 +35,6 @@ class PostViewSet(viewsets.ModelViewSet):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
     permission_classes = (IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly)
-    pagination_class = None
-
-    def get_queryset(self):
-        queryset = Post.objects.all()
-        return queryset
 
     def get_paginated_response(self, data):
         return super().get_paginated_response(data)
@@ -68,25 +65,7 @@ class FollowViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        following_username = self.request.data.get('following')
-        if not following_username:
-            raise serializers.ValidationError(
-                "Following username must be provided")
-
-        try:
-            following = User.objects.get(username=following_username)
-        except User.DoesNotExist:
-            raise serializers.ValidationError("Following user does not exist")
-
-        if Follow.objects.filter(user=self.request.user,
-                                 following=following).exists():
-            raise serializers.ValidationError(
-                "You are already following this user")
-
-        if following == self.request.user:
-            raise serializers.ValidationError("You cannot follow yourself")
-
-        serializer.save(user=self.request.user, following=following)
+        serializer.save(user=self.request.user)
 
 
 class CommentViewSet(viewsets.ModelViewSet):
@@ -95,16 +74,15 @@ class CommentViewSet(viewsets.ModelViewSet):
     pagination_class = None
 
     def get_queryset(self):
-        post_id = self.kwargs.get('post_id')
-        return Comment.objects.filter(post_id=post_id)
+        return Comment.objects.filter(post_id=self.kwargs.get('post_id'))
 
     def perform_create(self, serializer):
-        post_id = self.kwargs.get('post_id')
-        post = Post.objects.get(id=post_id)
+        try:
+            post = Post.objects.get(id=self.kwargs.get('post_id'))
+        except Post.DoesNotExist:
+            raise NotFound(detail="Пост не найден.")
+
         serializer.save(author=self.request.user, post=post)
 
     def perform_update(self, serializer):
         serializer.save(author=self.request.user)
-
-    def perform_destroy(self, instance):
-        instance.delete()
