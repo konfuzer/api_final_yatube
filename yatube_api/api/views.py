@@ -20,14 +20,11 @@ from .serializers import (
 User = get_user_model()
 
 
-class PostPagination(LimitOffsetPagination):
-    page_size = 10
-
-
 class GroupViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
     permission_classes = (AllowAny,)
+    pagination_class = None
 
 
 class PostViewSet(viewsets.ModelViewSet):
@@ -35,12 +32,9 @@ class PostViewSet(viewsets.ModelViewSet):
     serializer_class = PostSerializer
     permission_classes = (IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly)
 
-    def get_paginated_response(self, data):
-        return super().get_paginated_response(data)
-
     def list(self, request, *args, **kwargs):
         if 'limit' in request.query_params or 'offset' in request.query_params:
-            self.pagination_class = PostPagination
+            self.pagination_class = LimitOffsetPagination
         else:
             self.pagination_class = None
 
@@ -53,6 +47,7 @@ class PostViewSet(viewsets.ModelViewSet):
 class FollowViewSet(viewsets.ModelViewSet):
     serializer_class = FollowSerializer
     permission_classes = (IsAuthenticated,)
+    pagination_class = None
 
     def get_queryset(self):
         user = self.request.user
@@ -69,6 +64,7 @@ class FollowViewSet(viewsets.ModelViewSet):
 class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
     permission_classes = (IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly)
+    pagination_class = None
 
     def get_queryset(self):
         return Comment.objects.filter(post_id=self.kwargs.get('post_id'))
