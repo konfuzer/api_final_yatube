@@ -25,27 +25,27 @@ class GroupViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = (AllowAny,)
 
 
-class PostViewSet(viewsets.ModelViewSet): 
-    queryset = Post.objects.all() 
-    serializer_class = PostSerializer 
-    permission_classes = (IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly) 
+class PostViewSet(viewsets.ModelViewSet):
+    queryset = Post.objects.all()
+    serializer_class = PostSerializer
+    permission_classes = (IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly)
     pagination_class = LimitOffsetPagination
 
-    def perform_create(self, serializer): 
+    def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
 
-class FollowViewSet(viewsets.ModelViewSet): 
-    serializer_class = FollowSerializer 
-    permission_classes = (IsAuthenticated,) 
+class FollowViewSet(viewsets.ModelViewSet):
+    serializer_class = FollowSerializer
+    permission_classes = (IsAuthenticated,)
     filter_backends = (filters.SearchFilter,)
     search_fields = ('following__username',)
 
-    def get_queryset(self): 
-        user = self.request.user 
+    def get_queryset(self):
+        user = self.request.user
         return Follow.objects.filter(user=user)
-    
-    def perform_create(self, serializer): 
+
+    def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
 
